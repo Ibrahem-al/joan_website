@@ -2,26 +2,92 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --forest-800: #1a5c38;
+  --gold-500: #c9960c;
+  --cream: #faf8f4;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
+  background-color: #faf8f4;
+  color: #1a1a1a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Selection color */
+::selection {
+  background-color: #1a5c38;
+  color: #ffffff;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f0f7f3;
+}
+::-webkit-scrollbar-thumb {
+  background: #1a5c38;
+  border-radius: 3px;
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid #c9960c;
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+
+  .text-forest {
+    color: #1a5c38;
+  }
+
+  .text-gold {
+    color: #c9960c;
+  }
+
+  .bg-forest {
+    background-color: #1a5c38;
+  }
+
+  .bg-cream {
+    background-color: #faf8f4;
+  }
+}
+
+/* Star rating */
+.stars {
+  color: #c9960c;
+  letter-spacing: 1px;
+}
+
+/* Smooth transitions for interactive elements */
+button, a, input, select, textarea {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+/* Custom number input */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
 }
