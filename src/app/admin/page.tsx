@@ -267,13 +267,20 @@ export default function AdminPage() {
   };
 
   const unpublishDocument = async (docId: string) => {
-    const { error: updateError } = await supabase
-      .from("documents")
-      .update({ is_published: false })
-      .eq("id", docId);
+    const { data: { session } } = await supabase.auth.getSession();
 
-    if (updateError) {
-      setError(updateError.message);
+    const response = await fetch("/api/admin/documents/unpublish", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify({ documentId: docId }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      setError(errorData.error || "Failed to remove document");
       return;
     }
 

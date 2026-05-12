@@ -48,10 +48,14 @@ export default function AuthPage() {
 
         if (data.user) {
           console.log("Login successful, user:", data.user.id);
+          const { data: profileData } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", data.user.id)
+            .single();
+          const destination = profileData?.role === "admin" ? "/admin" : "/dashboard";
           setSubmitted(true);
-          setTimeout(() => {
-            router.push("/dashboard");
-          }, 2000);
+          setTimeout(() => router.push(destination), 500);
         }
       } else {
         console.log("Attempting signup with email:", form.email);
@@ -96,9 +100,7 @@ export default function AuthPage() {
 
         console.log("Signup successful");
         setSubmitted(true);
-        setTimeout(() => {
-          router.push("/dashboard");
-        }, 2000);
+        setTimeout(() => router.push("/dashboard"), 500);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred";
