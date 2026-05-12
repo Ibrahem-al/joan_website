@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { PDFDocument, rgb } from 'pdf-lib'
+import { PDFDocument, rgb, degrees } from 'pdf-lib'
 
 export async function POST(request: NextRequest) {
   try {
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
           size: fontSize,
           color: rgb(0.6, 0.6, 0.6),
           opacity: 0.15,
-          rotate: 315, // 45 degrees from top-right to bottom-left
+          rotate: degrees(315),
         })
       }
     })
