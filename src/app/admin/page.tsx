@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ElementType } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { Check, X, Edit2, Trash2, Plus, BarChart2, Users, FileText, Tag, Settings, Building2, Upload, AlertCircle, CheckCircle, LogOut } from "lucide-react";
-import { PRICING_TIERS, CATEGORIES } from "@/lib/mockData";
+import { X, Edit2, Trash2, Plus, BarChart2, Users, FileText, Tag, Settings, Building2, Upload, AlertCircle, CheckCircle, LogOut } from "lucide-react";
 
 type AdminTab = "overview" | "businesses" | "documents" | "pricing" | "categories" | "applications" | "featured";
 
-const TAB_CONFIG: Array<{ id: AdminTab; label: string; icon: any }> = [
+const TAB_CONFIG: Array<{ id: AdminTab; label: string; icon: ElementType }> = [
   { id: "overview", label: "Overview", icon: BarChart2 },
   { id: "featured", label: "Featured", icon: Building2 },
   { id: "businesses", label: "Businesses", icon: Building2 },
@@ -46,14 +45,12 @@ export default function AdminPage() {
 
   const [loading, setLoading] = useState(true);
   const [authed, setAuthed] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const [tab, setTab] = useState<AdminTab>("overview");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [pendingOnly, setPendingOnly] = useState(false);
 
   const [newDoc, setNewDoc] = useState({
     title: "",
@@ -87,7 +84,6 @@ export default function AdminPage() {
         return;
       }
 
-      setUser(authUser);
       setAuthed(true);
       setLoading(false);
 
@@ -237,31 +233,6 @@ export default function AdminPage() {
     }
   };
 
-  const updateDocumentPrice = async (docId: string, newPrice: number) => {
-    const { data: { session } } = await supabase.auth.getSession();
-
-    const response = await fetch("/api/admin/documents/update-price", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${session?.access_token}`,
-      },
-      body: JSON.stringify({ documentId: docId, price: newPrice }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      setError(errorData.error || "Failed to update price");
-      return;
-    }
-
-    setDocuments((prev) =>
-      prev.map((d) => (d.id === docId ? { ...d, price: newPrice } : d))
-    );
-    setSuccess("Price updated!");
-    setTimeout(() => setSuccess(null), 2000);
-  };
-
   const handleEditDocument = async () => {
     if (!editingDoc) return;
 
@@ -334,8 +305,6 @@ export default function AdminPage() {
       </div>
     );
   }
-
-  const pendingCount = businesses.filter((b) => b.status === "pending").length;
 
   return (
     <div className="min-h-screen bg-slate-50 pt-20">

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase";
+import type { User } from "@supabase/supabase-js";
 
 const NAV_LINKS = [
   { href: "/directory", label: "Directory" },
@@ -18,7 +19,7 @@ export default function Navbar() {
   const supabase = createClient();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const pathname = usePathname();
 

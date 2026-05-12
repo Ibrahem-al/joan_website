@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
-import { Download, ShieldCheck, CreditCard, X, Check, FileDown } from "lucide-react";
+import { Download, ShieldCheck, X, Check, FileDown } from "lucide-react";
 
 interface Document {
   id: string;
@@ -137,8 +137,8 @@ export default function StorePage() {
 
       if (!response.ok) throw new Error("Checkout failed");
 
-      const { clientSecret } = await response.json();
-      // In production, use Stripe.js to confirm payment with clientSecret
+      await response.json();
+      // In production, use Stripe.js to confirm payment with the returned clientSecret
       // For now, show success after mock processing
       setTimeout(() => {
         setSelectedDoc(null);

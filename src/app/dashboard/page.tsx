@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { createClient } from "@/lib/supabase";
-import { LogOut, Save, Upload, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
+import { LogOut, Save, AlertCircle, CheckCircle, Clock } from "lucide-react";
 import { CATEGORIES, STATES } from "@/lib/mockData";
 
 interface Business {
@@ -44,7 +44,7 @@ export default function DashboardPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [business, setBusiness] = useState<Business | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [error, setError] = useState<string | null>(null);
