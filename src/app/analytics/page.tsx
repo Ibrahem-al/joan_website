@@ -137,7 +137,7 @@ export default function AnalyticsPage() {
           </div>
           <div>
             <h1 className="font-bold text-sm">Analytics Dashboard</h1>
-            <p className="text-xs text-slate-500">Javona&apos;s Network</p>
+            <p className="text-xs text-slate-500">LaPai Management Solutions</p>
           </div>
         </div>
         <div className="flex items-center gap-4">

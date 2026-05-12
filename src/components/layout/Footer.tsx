@@ -33,22 +33,21 @@ export default function Footer() {
             {/* TODO: Replace with real logo once provided */}
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-lg bg-gold-500 flex items-center justify-center font-black text-sm text-forest-950">
-                JN
+                LM
               </div>
-              <span className="font-bold text-lg">Javona&apos;s Network</span>
+              <span className="font-bold text-lg">LaPai</span>
             </div>
             <p className="text-forest-300 text-sm leading-relaxed max-w-sm mb-6">
               Connecting investors and clients with vetted small businesses across multiple states. Your trusted professional referral network.
             </p>
             {/* Contact */}
             <div className="space-y-2">
-              {/* TODO: Replace with real contact info */}
               <a
-                href="mailto:contact@javaonasnetwork.com"
+                href="mailto:Lapaisolutions@gmail.com"
                 className="flex items-center gap-2 text-sm text-forest-300 hover:text-gold-400 transition-colors"
               >
                 <Mail size={14} />
-                contact@javaonasnetwork.com
+                Lapaisolutions@gmail.com
               </a>
               <a
                 href="tel:5558675309"
@@ -93,7 +92,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="py-6 border-t border-forest-800 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-forest-400">
-            &copy; {new Date().getFullYear()} Javona&apos;s Network. All rights reserved.
+            &copy; {new Date().getFullYear()} LaPai Management Solutions & Consulting LLC. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
             <a href="#" className="text-xs text-forest-400 hover:text-gold-400 transition-colors">Privacy Policy</a>

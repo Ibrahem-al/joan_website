@@ -451,7 +451,7 @@ export const TESTIMONIALS = [
     name: "Marcus T.",
     role: "Real Estate Investor",
     state: "Georgia",
-    text: "Javona's Network connected me with a contractor and a real estate attorney in the same week. Both were professional, responsive, and exactly what I needed. This network is the real deal.",
+    text: "LaPai Management Solutions connected me with a contractor and a real estate attorney in the same week. Both were professional, responsive, and exactly what I needed. This network is the real deal.",
     rating: 5,
     // TODO: Replace with client photo — testimonial headshot
     avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80",
@@ -461,7 +461,7 @@ export const TESTIMONIALS = [
     name: "Denise R.",
     role: "Small Business Owner",
     state: "Florida",
-    text: "I found my CPA and event caterer through this platform. Both businesses were vetted and professional. The booking process was seamless. I recommend Javona's Network to every entrepreneur I know.",
+    text: "I found my CPA and event caterer through this platform. Both businesses were vetted and professional. The booking process was seamless. I recommend LaPai Management Solutions to every entrepreneur I know.",
     rating: 5,
     avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80",
   },

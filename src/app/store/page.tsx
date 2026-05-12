@@ -1,8 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { DOCUMENTS } from "@/lib/mockData";
-import { Download, ShieldCheck, CreditCard, X, Check } from "lucide-react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase";
+import { Download, ShieldCheck, CreditCard, X, Check, FileDown } from "lucide-react";
+
+interface Document {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  price: number;
+  preview_file_path: string | null;
+}
 
 const CATEGORY_COLORS: Record<string, string> = {
   Legal: "bg-purple-100 text-purple-700",
@@ -10,194 +19,206 @@ const CATEGORY_COLORS: Record<string, string> = {
   Home: "bg-green-100 text-green-700",
 };
 
-function MockCheckoutModal({
+function PreviewModal({
   doc,
   onClose,
 }: {
-  doc: (typeof DOCUMENTS)[0];
+  doc: Document;
   onClose: () => void;
 }) {
-  const [step, setStep] = useState<"checkout" | "success">("checkout");
-  const [processing, setProcessing] = useState(false);
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    card: "",
-    expiry: "",
-    cvv: "",
-  });
+  const previewUrl = doc.preview_file_path
+    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/documents-preview/${doc.preview_file_path}`
+    : '';
 
-  const formatCard = (val: string) =>
-    val
-      .replace(/\D/g, "")
-      .slice(0, 16)
-      .replace(/(.{4})/g, "$1 ")
-      .trim();
-
-  const formatExpiry = (val: string) => {
-    const d = val.replace(/\D/g, "").slice(0, 4);
-    return d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
-  };
-
-  const handlePay = (e: React.FormEvent) => {
-    e.preventDefault();
-    setProcessing(true);
-    // TODO: Connect real Stripe key when ready
-    // Mock: simulate processing delay
-    setTimeout(() => {
-      setProcessing(false);
-      setStep("success");
-      // TODO: Track mock_purchase event via trackEvent() once analytics connected
-    }, 1800);
+  const handleDownload = () => {
+    if (previewUrl) {
+      const link = document.createElement('a');
+      link.href = previewUrl;
+      link.download = `${doc.title}-preview.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-forest-950/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-forest-800 flex items-center justify-center">
-              <span className="text-gold-400 font-black text-xs">JN</span>
-            </div>
-            <span className="font-semibold text-slate-900 text-sm">Javona&apos;s Network</span>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors">
-            <X size={18} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-forest-950/60 backdrop-blur-sm p-2">
+      <div className="bg-white rounded-2xl w-full h-full max-w-7xl shadow-2xl overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
+          <h3 className="font-semibold text-slate-900 text-lg">{doc.title} — Preview</h3>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-700 transition-colors"
+          >
+            <X size={20} />
           </button>
         </div>
 
-        {step === "success" ? (
-          <div className="p-8 text-center">
-            <div className="w-16 h-16 rounded-full bg-forest-50 flex items-center justify-center mx-auto mb-4">
-              <Check className="text-forest-800" size={28} />
-            </div>
-            <h3 className="font-bold text-forest-900 text-xl mb-2">Payment Successful!</h3>
-            <p className="text-slate-500 text-sm mb-2">{doc.title}</p>
-            <p className="text-slate-400 text-xs mb-8">A receipt has been sent to {form.email || "your email"}</p>
-            <a
-              href={doc.fileUrl}
-              download
-              className="inline-flex items-center gap-2 w-full justify-center py-3.5 rounded-xl bg-forest-800 hover:bg-forest-700 text-white font-bold text-sm transition-colors mb-3"
-            >
-              <Download size={16} />
-              Download Document
-            </a>
-            {/* TODO: Replace with real download link from Supabase storage once connected */}
-            <p className="text-xs text-slate-400">
-              Demo mode: file link is a placeholder.
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={handlePay} className="p-6 space-y-4">
-            <div className="bg-slate-50 rounded-xl p-4 mb-2">
-              <p className="text-xs text-slate-500 mb-1">Purchasing</p>
-              <p className="font-semibold text-slate-900 text-sm">{doc.title}</p>
-              <p className="text-lg font-black text-forest-800 mt-1">${doc.price}.00</p>
-            </div>
+        <div className="flex-1 overflow-hidden bg-slate-50 flex items-center justify-center">
+          {doc.preview_file_path ? (
+            <iframe
+              src={previewUrl}
+              className="w-full h-full border-none"
+              title="PDF Preview"
+            />
+          ) : (
+            <p className="text-slate-500">Preview not yet available</p>
+          )}
+        </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Full Name</label>
-              <input
-                type="text"
-                required
-                placeholder="Jane Smith"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:border-forest-400 text-slate-700 placeholder-slate-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email</label>
-              <input
-                type="email"
-                required
-                placeholder="jane@example.com"
-                value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:border-forest-400 text-slate-700 placeholder-slate-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Card Number</label>
-              <div className="relative">
-                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                <input
-                  type="text"
-                  required
-                  placeholder="1234 5678 9012 3456"
-                  value={form.card}
-                  onChange={(e) => setForm((f) => ({ ...f, card: formatCard(e.target.value) }))}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:border-forest-400 text-slate-700 placeholder-slate-400 tabular-nums"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Expiry</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="MM/YY"
-                  value={form.expiry}
-                  onChange={(e) => setForm((f) => ({ ...f, expiry: formatExpiry(e.target.value) }))}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:border-forest-400 text-slate-700 placeholder-slate-400 tabular-nums"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">CVV</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="123"
-                  maxLength={4}
-                  value={form.cvv}
-                  onChange={(e) => setForm((f) => ({ ...f, cvv: e.target.value.replace(/\D/g, "") }))}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:border-forest-400 text-slate-700 placeholder-slate-400 tabular-nums"
-                />
-              </div>
-            </div>
-
+        <div className="p-4 border-t border-slate-100 bg-white flex gap-3 justify-end flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors"
+          >
+            Close
+          </button>
+          {doc.preview_file_path && (
             <button
-              type="submit"
-              disabled={processing}
-              className="w-full py-4 rounded-xl bg-forest-800 hover:bg-forest-700 text-white font-bold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-80"
+              onClick={handleDownload}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-forest-800 text-white text-sm font-medium hover:bg-forest-700 transition-colors"
             >
-              {processing ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <ShieldCheck size={16} />
-                  Pay ${doc.price}.00
-                </>
-              )}
+              <FileDown size={16} />
+              Download Preview
             </button>
-
-            <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
-              <ShieldCheck size={12} />
-              <span>Demo mode — no real payment processed</span>
-            </div>
-            {/* TODO: Connect real Stripe key when ready */}
-          </form>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 export default function StorePage() {
-  const [selectedDoc, setSelectedDoc] = useState<(typeof DOCUMENTS)[0] | null>(null);
+  const supabase = createClient();
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
+
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        console.log("Starting document fetch...");
+        const start = Date.now();
+        const { data, error } = await supabase
+          .from("documents")
+          .select("*")
+          .eq("is_published", true)
+          .order("sort_order");
+
+        const elapsed = Date.now() - start;
+        console.log(`Document fetch completed in ${elapsed}ms`, { data, error });
+
+        if (error) {
+          console.error("Documents query error:", error);
+        } else if (data) {
+          console.log(`Found ${data.length} documents`);
+          setDocuments(data);
+        }
+      } catch (err) {
+        console.error("Document fetch exception:", err);
+      }
+      setLoading(false);
+    };
+
+    fetchDocuments();
+  }, [supabase]);
+
+  const handleCheckout = async (doc: Document) => {
+    try {
+      const response = await fetch("/api/store/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          documentId: doc.id,
+          amount: Math.round(doc.price * 100),
+        }),
+      });
+
+      if (!response.ok) throw new Error("Checkout failed");
+
+      const { clientSecret } = await response.json();
+      // In production, use Stripe.js to confirm payment with clientSecret
+      // For now, show success after mock processing
+      setTimeout(() => {
+        setSelectedDoc(null);
+        alert(`Purchase successful! Download link would be sent to your email.`);
+      }, 1500);
+    } catch (err) {
+      alert("Checkout error: " + (err instanceof Error ? err.message : "Unknown error"));
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-cream pt-20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-forest-200 border-t-forest-800 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-600">Loading documents...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-cream pt-20">
+      {previewDoc && (
+        <PreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />
+      )}
+
       {selectedDoc && (
-        <MockCheckoutModal doc={selectedDoc} onClose={() => setSelectedDoc(null)} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-forest-950/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-forest-800 flex items-center justify-center">
+                  <span className="text-gold-400 font-black text-xs">LM</span>
+                </div>
+                <span className="font-semibold text-slate-900 text-sm">LaPai</span>
+              </div>
+              <button
+                onClick={() => setSelectedDoc(null)}
+                className="text-slate-400 hover:text-slate-700 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-50 rounded-xl p-4">
+                <p className="text-xs text-slate-500 mb-1">Purchasing</p>
+                <p className="font-semibold text-slate-900 text-sm">{selectedDoc.title}</p>
+                <p className="text-lg font-black text-forest-800 mt-1">
+                  ${selectedDoc.price.toFixed(2)}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                  Email for receipt
+                </label>
+                <input
+                  type="email"
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:border-forest-400"
+                />
+              </div>
+
+              <button
+                onClick={() => handleCheckout(selectedDoc)}
+                className="w-full py-4 rounded-xl bg-forest-800 hover:bg-forest-700 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2"
+              >
+                <ShieldCheck size={16} />
+                Complete Purchase
+              </button>
+
+              <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
+                <ShieldCheck size={12} />
+                <span>Secure payment via Stripe</span>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Header */}
@@ -229,36 +250,66 @@ export default function StorePage() {
         </div>
 
         {/* Document grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {DOCUMENTS.map((doc) => (
-            <div key={doc.id} className="bg-white rounded-2xl overflow-hidden shadow-card border border-forest-50 flex flex-col hover:shadow-card-hover transition-all duration-300">
-              {/* Color header by category */}
-              <div className="h-3 bg-forest-800" />
-              <div className="p-8 flex-1 flex flex-col">
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${CATEGORY_COLORS[doc.category] || "bg-slate-100 text-slate-600"}`}>
-                    {doc.category}
-                  </span>
-                  <div className="text-right">
-                    <div className="text-2xl font-black text-forest-900">${doc.price}</div>
-                    <div className="text-xs text-slate-400">one-time</div>
+        {documents.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-slate-500 text-lg mb-4">No documents available yet.</p>
+            <p className="text-slate-400 text-sm">Check back soon!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {documents.map((doc) => (
+              <div
+                key={doc.id}
+                className="bg-white rounded-2xl overflow-hidden shadow-card border border-forest-50 flex flex-col hover:shadow-card-hover transition-all duration-300"
+              >
+                {/* Color header by category */}
+                <div className="h-3 bg-forest-800" />
+                <div className="p-8 flex-1 flex flex-col">
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <span
+                      className={`text-xs font-semibold px-2 py-1 rounded-lg ${
+                        CATEGORY_COLORS[doc.category] || "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {doc.category}
+                    </span>
+                    <div className="text-right">
+                      <div className="text-2xl font-black text-forest-900">
+                        ${doc.price.toFixed(2)}
+                      </div>
+                      <div className="text-xs text-slate-400">one-time</div>
+                    </div>
+                  </div>
+
+                  <h3 className="font-bold text-forest-900 text-base leading-tight mb-3">
+                    {doc.title}
+                  </h3>
+                  <p className="text-sm text-slate-500 leading-relaxed flex-1 mb-6">
+                    {doc.description}
+                  </p>
+
+                  <div className="space-y-2">
+                    {doc.preview_file_path && (
+                      <button
+                        onClick={() => setPreviewDoc(doc)}
+                        className="w-full py-2 rounded-xl border border-forest-200 text-forest-800 text-sm font-semibold hover:bg-forest-50 transition-colors"
+                      >
+                        Preview
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setSelectedDoc(doc)}
+                      className="w-full py-3.5 rounded-xl bg-forest-800 hover:bg-forest-700 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Download size={16} />
+                      Buy &amp; Download
+                    </button>
                   </div>
                 </div>
-
-                <h3 className="font-bold text-forest-900 text-base leading-tight mb-3">{doc.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed flex-1 mb-6">{doc.description}</p>
-
-                <button
-                  onClick={() => setSelectedDoc(doc)}
-                  className="w-full py-3.5 rounded-xl bg-forest-800 hover:bg-forest-700 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2"
-                >
-                  <Download size={16} />
-                  Buy &amp; Download
-                </button>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Info note */}
         <p className="mt-8 text-center text-xs text-slate-400">

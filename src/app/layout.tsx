@@ -12,17 +12,15 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  // TODO: Replace with real business name once confirmed
-  title: "Javona's Network | Premier Business Directory",
+  title: "LaPai Management Solutions & Consulting LLC | Premier Business Directory",
   description:
     "Connect with vetted small businesses across multiple states. Your trusted network for home repair, beauty, legal, financial, and more.",
   keywords: "business directory, referral network, small business, contractors, professionals",
   openGraph: {
-    title: "Javona's Network",
+    title: "LaPai Management Solutions & Consulting LLC",
     description: "Your trusted business referral network",
-    // TODO: Replace with real domain once confirmed
-    url: "https://javaonasnetwork.com",
-    siteName: "Javona's Network",
+    url: "https://lapaisolutions.com",
+    siteName: "LaPai Management Solutions & Consulting LLC",
     type: "website",
   },
 };

@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Menu, X, LogOut } from "lucide-react";
+import { createClient } from "@/lib/supabase";
 
 const NAV_LINKS = [
   { href: "/directory", label: "Directory" },
@@ -13,9 +14,22 @@ const NAV_LINKS = [
 ];
 
 export default function Navbar() {
+  const router = useRouter();
+  const supabase = createClient();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const pathname = usePathname();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      setUser(authUser);
+      setLoading(false);
+    };
+    checkAuth();
+  }, [supabase]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -48,14 +62,14 @@ export default function Navbar() {
                 transparent ? "bg-white/20 text-white" : "bg-forest-800 text-gold-500"
               }`}
             >
-              JN
+              LM
             </div>
             <span
               className={`font-bold text-lg tracking-tight transition-colors ${
                 transparent ? "text-white" : "text-forest-800"
               }`}
             >
-              Javona&apos;s Network
+              LaPai
             </span>
           </Link>
 
@@ -85,22 +99,53 @@ export default function Navbar() {
 
           {/* Desktop CTA */}
           <div className="hidden lg:flex items-center gap-3">
-            <Link
-              href="/auth"
-              className={`text-sm font-medium px-4 py-2 rounded-lg transition-all ${
-                transparent
-                  ? "text-white/90 hover:text-white"
-                  : "text-forest-800 hover:bg-forest-50"
-              }`}
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/apply"
-              className="text-sm font-semibold px-5 py-2.5 rounded-lg bg-gold-500 text-white hover:bg-gold-600 transition-all shadow-gold hover:shadow-none"
-            >
-              Get Connected
-            </Link>
+            {!loading && user ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  className={`text-sm font-medium px-4 py-2 rounded-lg transition-all ${
+                    transparent
+                      ? "text-white/90 hover:text-white"
+                      : "text-forest-800 hover:bg-forest-50"
+                  }`}
+                >
+                  Dashboard
+                </Link>
+                <button
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    router.push("/");
+                  }}
+                  className={`text-sm font-medium px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${
+                    transparent
+                      ? "text-white/90 hover:text-white"
+                      : "text-forest-800 hover:bg-forest-50"
+                  }`}
+                >
+                  <LogOut size={14} />
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/auth"
+                  className={`text-sm font-medium px-4 py-2 rounded-lg transition-all ${
+                    transparent
+                      ? "text-white/90 hover:text-white"
+                      : "text-forest-800 hover:bg-forest-50"
+                  }`}
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/apply"
+                  className="text-sm font-semibold px-5 py-2.5 rounded-lg bg-gold-500 text-white hover:bg-gold-600 transition-all shadow-gold hover:shadow-none"
+                >
+                  Get Connected
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile hamburger */}
@@ -134,18 +179,42 @@ export default function Navbar() {
               </Link>
             ))}
             <div className="pt-3 border-t border-forest-100 flex flex-col gap-2">
-              <Link
-                href="/auth"
-                className="block px-4 py-3 text-sm font-medium text-forest-800 hover:bg-forest-50 rounded-lg"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/apply"
-                className="block px-4 py-3 text-sm font-semibold text-center bg-gold-500 text-white rounded-lg hover:bg-gold-600"
-              >
-                Get Connected
-              </Link>
+              {!loading && user ? (
+                <>
+                  <Link
+                    href="/dashboard"
+                    className="block px-4 py-3 text-sm font-medium text-forest-800 hover:bg-forest-50 rounded-lg"
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={async () => {
+                      await supabase.auth.signOut();
+                      router.push("/");
+                      setOpen(false);
+                    }}
+                    className="block px-4 py-3 text-sm font-medium text-forest-800 hover:bg-forest-50 rounded-lg flex items-center gap-2"
+                  >
+                    <LogOut size={14} />
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/auth"
+                    className="block px-4 py-3 text-sm font-medium text-forest-800 hover:bg-forest-50 rounded-lg"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/apply"
+                    className="block px-4 py-3 text-sm font-semibold text-center bg-gold-500 text-white rounded-lg hover:bg-gold-600"
+                  >
+                    Get Connected
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

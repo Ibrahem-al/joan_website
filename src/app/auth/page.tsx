@@ -1,24 +1,111 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Eye, EyeOff, ArrowRight, AlertCircle } from "lucide-react";
+import { createClient } from "@/lib/supabase";
 
 type Mode = "login" | "signup";
 type Role = "client" | "business";
 
 export default function AuthPage() {
+  const router = useRouter();
+  const supabase = createClient();
+
+  if (!supabase) {
+    console.error("Supabase client failed to initialize - check environment variables");
+  }
+
   const [mode, setMode] = useState<Mode>("login");
-  const [role, setRole] = useState<Role>("client");
+  const [role, setRole] = useState<Role>("business");
   const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
 
   const update = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Connect Supabase Auth (email + password) once credentials are added
-    setSubmitted(true);
+    setError(null);
+    setLoading(true);
+    console.log("Form submitted, mode:", mode);
+
+    try {
+      if (mode === "login") {
+        console.log("Attempting login with email:", form.email);
+        const { data, error: authError } = await supabase.auth.signInWithPassword({
+          email: form.email,
+          password: form.password,
+        });
+
+        if (authError) {
+          setError(authError.message);
+          setLoading(false);
+          return;
+        }
+
+        if (data.user) {
+          console.log("Login successful, user:", data.user.id);
+          setSubmitted(true);
+          setTimeout(() => {
+            router.push("/dashboard");
+          }, 2000);
+        }
+      } else {
+        console.log("Attempting signup with email:", form.email);
+        // Validation
+        if (!form.name.trim()) {
+          setError("Full name is required");
+          setLoading(false);
+          return;
+        }
+        if (!form.email.trim()) {
+          setError("Email is required");
+          setLoading(false);
+          return;
+        }
+        if (form.password.length < 6) {
+          setError("Password must be at least 6 characters");
+          setLoading(false);
+          return;
+        }
+        if (form.password !== form.confirmPassword) {
+          setError("Passwords do not match");
+          setLoading(false);
+          return;
+        }
+
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email: form.email,
+          password: form.password,
+          options: {
+            data: {
+              full_name: form.name,
+            },
+          },
+        });
+
+        if (signUpError) {
+          console.error("Signup error:", signUpError.message);
+          setError(signUpError.message);
+          setLoading(false);
+          return;
+        }
+
+        console.log("Signup successful");
+        setSubmitted(true);
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 2000);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "An error occurred";
+      console.error("Auth error:", errorMessage, err);
+      setError(errorMessage);
+      setLoading(false);
+    }
   };
 
   if (submitted) {
@@ -33,13 +120,14 @@ export default function AuthPage() {
           </h1>
           <p className="text-slate-500 text-sm mb-8">
             {mode === "login"
-              ? `Signed in as ${form.email}`
-              : `Your ${role} account has been created. Redirecting to your dashboard...`}
+              ? `Signed in as ${form.email}. Redirecting...`
+              : `Your account has been created. Redirecting to your dashboard...`}
           </p>
-          <a href="/" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-forest-800 text-white font-bold text-sm hover:bg-forest-700 transition-colors">
-            Go to Dashboard
-          </a>
-          <p className="mt-4 text-xs text-slate-400">Demo mode — Supabase Auth not yet connected</p>
+          <div className="flex justify-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-forest-800 animate-pulse" />
+            <div className="w-2 h-2 rounded-full bg-forest-800 animate-pulse" style={{ animationDelay: "0.2s" }} />
+            <div className="w-2 h-2 rounded-full bg-forest-800 animate-pulse" style={{ animationDelay: "0.4s" }} />
+          </div>
         </div>
       </div>
     );
@@ -51,10 +139,9 @@ export default function AuthPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-12 h-12 rounded-xl bg-forest-800 flex items-center justify-center mx-auto mb-3">
-            <span className="text-gold-400 font-black text-sm">JN</span>
+            <span className="text-gold-400 font-black text-sm">LM</span>
           </div>
-          {/* TODO: Replace with real logo */}
-          <h1 className="font-black text-forest-900 text-xl">Javona&apos;s Network</h1>
+          <h1 className="font-black text-forest-900 text-xl">LaPai Management Solutions</h1>
         </div>
 
         <div className="bg-white rounded-2xl shadow-card p-8">
@@ -74,6 +161,14 @@ export default function AuthPage() {
               </button>
             ))}
           </div>
+
+          {/* Error message */}
+          {error && (
+            <div className="mb-4 flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200">
+              <AlertCircle size={18} className="text-red-600 shrink-0" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
 
           {/* Role selector (signup only) */}
           {mode === "signup" && (
@@ -98,13 +193,12 @@ export default function AuthPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {mode === "signup" && (
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Full Name</label>
                 <input
                   type="text"
-                  required
                   placeholder="Jane Smith"
                   value={form.name}
                   onChange={(e) => update("name", e.target.value)}
@@ -130,7 +224,6 @@ export default function AuthPage() {
               <div className="relative">
                 <input
                   type={showPass ? "text" : "password"}
-                  required
                   placeholder="Your password"
                   value={form.password}
                   onChange={(e) => update("password", e.target.value)}
@@ -151,7 +244,6 @@ export default function AuthPage() {
                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Confirm Password</label>
                 <input
                   type="password"
-                  required
                   placeholder="Confirm password"
                   value={form.confirmPassword}
                   onChange={(e) => update("confirmPassword", e.target.value)}
@@ -168,25 +260,23 @@ export default function AuthPage() {
 
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-forest-800 hover:bg-forest-700 text-white font-bold text-sm transition-colors mt-2"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-forest-800 hover:bg-forest-700 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors mt-2"
             >
-              {mode === "login" ? "Sign In" : "Create Account"}
-              <ArrowRight size={14} />
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  {mode === "login" ? "Signing in..." : "Creating account..."}
+                </>
+              ) : (
+                <>
+                  {mode === "login" ? "Sign In" : "Create Account"}
+                  <ArrowRight size={14} />
+                </>
+              )}
             </button>
-
-            <p className="text-center text-xs text-slate-400 pt-1">
-              Demo mode — Supabase Auth not yet connected
-            </p>
           </form>
         </div>
-
-        <p className="text-center text-sm text-slate-500 mt-6">
-          {mode === "login" ? (
-            <>Don&apos;t have an account? <button onClick={() => setMode("signup")} className="text-forest-800 font-semibold hover:underline">Sign up</button></>
-          ) : (
-            <>Already have an account? <button onClick={() => setMode("login")} className="text-forest-800 font-semibold hover:underline">Sign in</button></>
-          )}
-        </p>
       </div>
     </div>
   );
