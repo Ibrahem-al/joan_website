@@ -3,29 +3,36 @@
 import { useEffect, useState, type ElementType } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { X, Edit2, Trash2, Plus, BarChart2, Users, FileText, Tag, Settings, Building2, Upload, AlertCircle, CheckCircle, LogOut } from "lucide-react";
+import { X, Edit2, Trash2, Plus, BarChart2, Users, FileText, Building2, Upload, AlertCircle, CheckCircle, LogOut, Eye, ShoppingCart } from "lucide-react";
 
-type AdminTab = "overview" | "businesses" | "documents" | "pricing" | "categories" | "applications" | "featured";
+type AdminTab = "overview" | "featured" | "businesses" | "documents";
 
 const TAB_CONFIG: Array<{ id: AdminTab; label: string; icon: ElementType }> = [
   { id: "overview", label: "Overview", icon: BarChart2 },
   { id: "featured", label: "Featured", icon: Building2 },
-  { id: "businesses", label: "Businesses", icon: Building2 },
+  { id: "businesses", label: "Businesses", icon: Users },
   { id: "documents", label: "Documents", icon: FileText },
-  { id: "pricing", label: "Pricing", icon: Tag },
-  { id: "categories", label: "Categories", icon: Settings },
-  { id: "applications", label: "Applications", icon: Users },
 ];
 
 interface Business {
   id: string;
   name: string;
-  category: string;
+  category_slug: string;
   state: string;
   status: string;
   tier: string;
   is_featured: boolean;
-  user_id: string;
+  user_id: string | null;
+  rating: number;
+  review_count: number;
+}
+
+interface AnalyticsEvent {
+  id: number;
+  session_id: string;
+  event_type: string;
+  page: string;
+  created_at: string;
 }
 
 interface Document {
@@ -51,6 +58,7 @@ export default function AdminPage() {
 
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [analyticsEvents, setAnalyticsEvents] = useState<AnalyticsEvent[]>([]);
 
   const [newDoc, setNewDoc] = useState({
     title: "",
@@ -88,7 +96,7 @@ export default function AdminPage() {
       setLoading(false);
 
       // Fetch data
-      await Promise.all([fetchBusinesses(), fetchDocuments()]);
+      await Promise.all([fetchBusinesses(), fetchDocuments(), fetchAnalytics()]);
     };
 
     checkAuth();
@@ -98,9 +106,22 @@ export default function AdminPage() {
     const { data } = await supabase
       .from("businesses")
       .select("*")
-      .eq("status", "approved");
+      .order("created_at", { ascending: false });
 
     if (data) setBusinesses(data);
+  };
+
+  const fetchAnalytics = async () => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const { data } = await supabase
+      .from("analytics_events")
+      .select("id, session_id, event_type, page, created_at")
+      .gte("created_at", thirtyDaysAgo.toISOString())
+      .order("created_at", { ascending: false })
+      .limit(2000);
+
+    if (data) setAnalyticsEvents(data);
   };
 
   const fetchDocuments = async () => {
@@ -374,7 +395,7 @@ export default function AdminPage() {
                   <div key={biz.id} className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 flex items-center justify-between gap-4">
                     <div className="flex-1">
                       <p className="font-semibold text-slate-900 text-sm">{biz.name}</p>
-                      <p className="text-xs text-slate-400">{biz.category} • {biz.state}</p>
+                      <p className="text-xs text-slate-400">{biz.category_slug} • {biz.state}</p>
                     </div>
                     <button
                       onClick={() => toggleFeatured(biz.id)}
@@ -626,34 +647,144 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* OTHER TABS (placeholder content from existing admin) */}
-        {tab === "overview" && (
-          <div className="text-slate-600 text-sm">
-            <p>Overview dashboard — to be connected to Supabase analytics_events table</p>
-          </div>
-        )}
+        {/* OVERVIEW TAB */}
+        {tab === "overview" && (() => {
+          const pageViews = analyticsEvents.filter(e => e.event_type === "page_view").length;
+          const uniqueSessions = new Set(analyticsEvents.map(e => e.session_id)).size;
+          const formSubmissions = analyticsEvents.filter(e => ["appointment_submit", "intake_submit", "registration_submit"].includes(e.event_type)).length;
+          const purchases = analyticsEvents.filter(e => e.event_type === "mock_purchase").length;
 
+          // Visitors per day — last 14 days
+          const last14 = Array.from({ length: 14 }, (_, i) => {
+            const d = new Date();
+            d.setDate(d.getDate() - (13 - i));
+            return d.toISOString().split("T")[0];
+          });
+          const visitsByDay = last14.map(day => ({
+            day,
+            label: new Date(day + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+            sessions: new Set(
+              analyticsEvents
+                .filter(e => e.event_type === "page_view" && e.created_at.startsWith(day))
+                .map(e => e.session_id)
+            ).size,
+          }));
+          const maxSessions = Math.max(...visitsByDay.map(d => d.sessions), 1);
+
+          return (
+            <div className="space-y-6">
+              {/* Stat cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { label: "Page Views (30d)", value: pageViews, icon: Eye, color: "text-blue-500" },
+                  { label: "Unique Visitors (30d)", value: uniqueSessions, icon: Users, color: "text-purple-500" },
+                  { label: "Form Submissions", value: formSubmissions, icon: CheckCircle, color: "text-green-500" },
+                  { label: "Documents Sold", value: purchases, icon: ShoppingCart, color: "text-gold-500" },
+                ].map(card => {
+                  const Icon = card.icon;
+                  return (
+                    <div key={card.label} className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
+                      <Icon size={18} className={`${card.color} mb-3`} />
+                      <div className="text-2xl font-black text-slate-900">{card.value}</div>
+                      <div className="text-xs text-slate-500 mt-1">{card.label}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Quick stats row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
+                  <div className="text-xs text-slate-500 mb-1">Total Businesses</div>
+                  <div className="text-3xl font-black text-forest-800">{businesses.length}</div>
+                  <div className="text-xs text-slate-400 mt-1">
+                    {businesses.filter(b => b.status === "approved").length} approved ·{" "}
+                    {businesses.filter(b => b.status === "pending").length} pending
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
+                  <div className="text-xs text-slate-500 mb-1">Total Documents</div>
+                  <div className="text-3xl font-black text-forest-800">{documents.length}</div>
+                  <div className="text-xs text-slate-400 mt-1">
+                    {documents.filter(d => d.is_published).length} published
+                  </div>
+                </div>
+              </div>
+
+              {/* Visitors per day chart */}
+              <div className="bg-white rounded-xl p-6 border border-slate-100 shadow-sm">
+                <h3 className="font-bold text-sm text-slate-900 mb-5">Visitors Per Day — Last 14 Days</h3>
+                {analyticsEvents.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-8">No analytics events recorded yet. Events will appear here once visitors start using the site.</p>
+                ) : (
+                  <div className="flex items-end gap-1.5 h-40">
+                    {visitsByDay.map(({ day, label, sessions }) => (
+                      <div key={day} className="flex-1 flex flex-col items-center gap-1">
+                        <div className="text-xs text-slate-500 font-medium">{sessions > 0 ? sessions : ""}</div>
+                        <div
+                          className="w-full rounded-t-md bg-forest-600 transition-all duration-500"
+                          style={{ height: `${Math.max((sessions / maxSessions) * 120, sessions > 0 ? 4 : 2)}px`, opacity: sessions > 0 ? 1 : 0.2 }}
+                        />
+                        <div className="text-[10px] text-slate-400 text-center leading-tight">{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* BUSINESSES TAB */}
         {tab === "businesses" && (
-          <div className="text-slate-600 text-sm">
-            <p>Business management — to be connected to Supabase businesses table</p>
-          </div>
-        )}
-
-        {tab === "pricing" && (
-          <div className="text-slate-600 text-sm">
-            <p>Pricing management — to be connected to Supabase pricing tiers</p>
-          </div>
-        )}
-
-        {tab === "categories" && (
-          <div className="text-slate-600 text-sm">
-            <p>Category management — to be connected to Supabase categories</p>
-          </div>
-        )}
-
-        {tab === "applications" && (
-          <div className="text-slate-600 text-sm">
-            <p>Applications submitted via /apply will appear here once Supabase is connected.</p>
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-forest-900">All Businesses ({businesses.length})</h2>
+            </div>
+            {businesses.length === 0 ? (
+              <div className="bg-white rounded-xl p-8 text-center border border-slate-100 shadow-sm">
+                <p className="text-slate-500 text-sm">No businesses in the database yet.</p>
+                <p className="text-slate-400 text-xs mt-1">Use the seed endpoint or wait for businesses to register.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {businesses.map(biz => {
+                  const statusColors: Record<string, string> = {
+                    approved: "bg-green-100 text-green-700",
+                    pending: "bg-amber-100 text-amber-700",
+                    rejected: "bg-red-100 text-red-700",
+                    suspended: "bg-slate-100 text-slate-600",
+                  };
+                  const tierColors: Record<string, string> = {
+                    premium: "bg-gold-100 text-gold-700",
+                    standard: "bg-blue-100 text-blue-700",
+                    basic: "bg-slate-100 text-slate-600",
+                  };
+                  return (
+                    <div key={biz.id} className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-900 text-sm truncate">{biz.name}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{biz.category_slug} · {biz.state}</p>
+                        {biz.rating > 0 && (
+                          <p className="text-xs text-slate-400">★ {biz.rating} ({biz.review_count} reviews)</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${statusColors[biz.status] || "bg-slate-100 text-slate-600"}`}>
+                          {biz.status}
+                        </span>
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${tierColors[biz.tier] || "bg-slate-100 text-slate-600"}`}>
+                          {biz.tier}
+                        </span>
+                        {biz.is_featured && (
+                          <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-gold-50 text-gold-700">★ featured</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
