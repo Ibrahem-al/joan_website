@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Search, Star, MapPin, Mail, ChevronDown } from "lucide-react";
-import { BUSINESSES, CATEGORIES, STATES } from "@/lib/mockData";
+import { CATEGORIES, STATES } from "@/lib/mockData";
+import { createClient } from "@/lib/supabase";
 
 const TIERS: Record<string, { label: string; color: string }> = {
   premium: { label: "Premium", color: "bg-gold-100 text-gold-700 border-gold-200" },
@@ -12,22 +13,53 @@ const TIERS: Record<string, { label: string; color: string }> = {
   basic: { label: "Listed", color: "bg-slate-100 text-slate-600 border-slate-200" },
 };
 
+interface BusinessRow {
+  id: string;
+  slug: string;
+  name: string;
+  category_slug: string;
+  state: string;
+  rating: number;
+  review_count: number;
+  description: string;
+  email: string;
+  tier: string;
+  logo_url: string | null;
+  is_featured: boolean;
+}
+
 export default function DirectoryPage() {
+  const supabase = createClient();
+  const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
+  const [loadingBiz, setLoadingBiz] = useState(true);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [state, setState] = useState("");
   const [page, setPage] = useState(1);
   const PER_PAGE = 6;
 
+  useEffect(() => {
+    supabase
+      .from("businesses")
+      .select("id, slug, name, category_slug, state, rating, review_count, description, email, tier, logo_url, is_featured")
+      .eq("status", "approved")
+      .order("is_featured", { ascending: false })
+      .order("rating", { ascending: false })
+      .then(({ data }) => {
+        if (data) setBusinesses(data);
+        setLoadingBiz(false);
+      });
+  }, []);
+
   const filtered = useMemo(() => {
-    return BUSINESSES.filter((b) => {
+    return businesses.filter((b) => {
       const q = query.toLowerCase();
       if (q && !b.name.toLowerCase().includes(q) && !b.description.toLowerCase().includes(q)) return false;
-      if (category && b.categorySlug !== category) return false;
+      if (category && b.category_slug !== category) return false;
       if (state && b.state !== state) return false;
       return true;
     });
-  }, [query, category, state]);
+  }, [businesses, query, category, state]);
 
   const totalPages = Math.ceil(filtered.length / PER_PAGE);
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
@@ -41,7 +73,7 @@ export default function DirectoryPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <h1 className="text-3xl sm:text-4xl font-black mb-2">Business Directory</h1>
           <p className="text-forest-200 text-base">
-            {BUSINESSES.length} vetted businesses across {STATES.length} states
+            {loadingBiz ? "Loading..." : `${businesses.length} vetted businesses across ${STATES.length} states`}
           </p>
         </div>
       </div>
@@ -87,121 +119,134 @@ export default function DirectoryPage() {
           </div>
         </div>
 
-        {/* Results count */}
-        <p className="text-sm text-slate-500 mb-6">
-          Showing {paginated.length} of {filtered.length} businesses
-          {query || category || state ? " (filtered)" : ""}
-        </p>
-
-        {/* Grid */}
-        {paginated.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-            {paginated.map((biz) => {
-              const tier = TIERS[biz.tier];
-              return (
-                <div key={biz.id} className="bg-white rounded-2xl overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300 group border border-forest-50">
-                  {/* Image */}
-                  <div className="relative h-44 overflow-hidden">
-                    {/* TODO: Replace with client business photos */}
-                    <Image
-                      src={biz.image}
-                      alt={biz.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute top-3 left-3">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold border ${tier.color}`}>
-                        {tier.label}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-5">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="font-bold text-forest-900 leading-tight">{biz.name}</h3>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Star size={12} className="fill-gold-500 text-gold-500" />
-                        <span className="text-xs font-semibold text-slate-700">{biz.rating}</span>
-                        <span className="text-xs text-slate-400">({biz.reviewCount})</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-forest-700 bg-forest-50 px-2 py-1 rounded-lg">
-                        {CATEGORIES.find(c => c.slug === biz.categorySlug)?.icon} {biz.category}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs text-slate-400">
-                        <MapPin size={10} /> {biz.state}
-                      </span>
-                    </div>
-
-                    <p className="text-sm text-slate-500 line-clamp-2 mb-4">{biz.description}</p>
-
-                    <div className="flex gap-2">
-                      <Link
-                        href={`/directory/${biz.slug}`}
-                        className="flex-1 text-center py-2.5 rounded-lg text-sm font-semibold text-forest-800 border border-forest-200 hover:bg-forest-50 transition-colors"
-                      >
-                        View Profile
-                      </Link>
-                      <a
-                        href={`mailto:${biz.email}`}
-                        className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold bg-forest-800 text-white hover:bg-forest-700 transition-colors"
-                      >
-                        <Mail size={14} />
-                        Contact
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+        {loadingBiz ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="w-10 h-10 border-4 border-forest-200 border-t-forest-800 rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="text-center py-24">
-            <div className="text-4xl mb-4">🔍</div>
-            <p className="text-slate-500 font-medium">No businesses match your search.</p>
-            <button
-              onClick={() => { setQuery(""); setCategory(""); setState(""); }}
-              className="mt-4 text-sm text-forest-800 underline underline-offset-2"
-            >
-              Clear filters
-            </button>
-          </div>
-        )}
+          <>
+            <p className="text-sm text-slate-500 mb-6">
+              Showing {paginated.length} of {filtered.length} businesses
+              {query || category || state ? " (filtered)" : ""}
+            </p>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-4 py-2 rounded-lg text-sm font-medium border border-forest-200 text-forest-800 hover:bg-forest-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              Previous
-            </button>
-            {[...Array(totalPages)].map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setPage(i + 1)}
-                className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
-                  page === i + 1
-                    ? "bg-forest-800 text-white"
-                    : "border border-forest-200 text-forest-800 hover:bg-forest-50"
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-4 py-2 rounded-lg text-sm font-medium border border-forest-200 text-forest-800 hover:bg-forest-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              Next
-            </button>
-          </div>
+            {paginated.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+                {paginated.map((biz) => {
+                  const tier = TIERS[biz.tier] ?? TIERS.basic;
+                  const catData = CATEGORIES.find(c => c.slug === biz.category_slug);
+                  return (
+                    <div key={biz.id} className="bg-white rounded-2xl overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300 group border border-forest-50">
+                      <div className="relative h-44 overflow-hidden bg-forest-100">
+                        {biz.logo_url ? (
+                          <Image
+                            src={biz.logo_url}
+                            alt={biz.name}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-forest-800 to-forest-600">
+                            <span className="text-4xl font-black text-white/30">{biz.name[0]}</span>
+                          </div>
+                        )}
+                        <div className="absolute top-3 left-3">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold border ${tier.color}`}>
+                            {tier.label}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-5">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <h3 className="font-bold text-forest-900 leading-tight">{biz.name}</h3>
+                          {biz.rating > 0 && (
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Star size={12} className="fill-gold-500 text-gold-500" />
+                              <span className="text-xs font-semibold text-slate-700">{biz.rating}</span>
+                              <span className="text-xs text-slate-400">({biz.review_count})</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3 mb-3">
+                          {catData && (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-forest-700 bg-forest-50 px-2 py-1 rounded-lg">
+                              {catData.icon} {catData.name}
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1 text-xs text-slate-400">
+                            <MapPin size={10} /> {biz.state}
+                          </span>
+                        </div>
+
+                        <p className="text-sm text-slate-500 line-clamp-2 mb-4">{biz.description}</p>
+
+                        <div className="flex gap-2">
+                          <Link
+                            href={`/directory/${biz.slug}`}
+                            className="flex-1 text-center py-2.5 rounded-lg text-sm font-semibold text-forest-800 border border-forest-200 hover:bg-forest-50 transition-colors"
+                          >
+                            View Profile
+                          </Link>
+                          <a
+                            href={`mailto:${biz.email}`}
+                            className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-semibold bg-forest-800 text-white hover:bg-forest-700 transition-colors"
+                          >
+                            <Mail size={14} />
+                            Contact
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-24">
+                <div className="text-4xl mb-4">🔍</div>
+                <p className="text-slate-500 font-medium">No businesses match your search.</p>
+                <button
+                  onClick={() => { setQuery(""); setCategory(""); setState(""); }}
+                  className="mt-4 text-sm text-forest-800 underline underline-offset-2"
+                >
+                  Clear filters
+                </button>
+              </div>
+            )}
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-4 py-2 rounded-lg text-sm font-medium border border-forest-200 text-forest-800 hover:bg-forest-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setPage(i + 1)}
+                    className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                      page === i + 1
+                        ? "bg-forest-800 text-white"
+                        : "border border-forest-200 text-forest-800 hover:bg-forest-50"
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="px-4 py-2 rounded-lg text-sm font-medium border border-forest-200 text-forest-800 hover:bg-forest-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

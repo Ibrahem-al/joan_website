@@ -3,7 +3,7 @@
 import { useEffect, useState, type ElementType } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { X, Edit2, Trash2, Plus, BarChart2, Users, FileText, Building2, Upload, AlertCircle, CheckCircle, LogOut, Eye, ShoppingCart } from "lucide-react";
+import { X, Edit2, Trash2, Plus, BarChart2, Users, FileText, Building2, Upload, AlertCircle, CheckCircle, LogOut, Eye, ShoppingCart, ThumbsUp, ThumbsDown, Clock } from "lucide-react";
 
 type AdminTab = "overview" | "featured" | "businesses" | "documents";
 
@@ -131,6 +131,31 @@ export default function AdminPage() {
       .order("created_at", { ascending: false });
 
     if (data) setDocuments(data);
+  };
+
+  const updateStatus = async (businessId: string, status: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    const response = await fetch("/api/admin/businesses/update-status", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify({ businessId, status }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      setError(errorData.error || "Failed to update status");
+      return;
+    }
+
+    setBusinesses((prev) =>
+      prev.map((b) => (b.id === businessId ? { ...b, status } : b))
+    );
+    setSuccess(`Business ${status === "approved" ? "approved" : "rejected"}!`);
+    setTimeout(() => setSuccess(null), 2000);
   };
 
   const toggleFeatured = async (businessId: string) => {
@@ -736,57 +761,111 @@ export default function AdminPage() {
         })()}
 
         {/* BUSINESSES TAB */}
-        {tab === "businesses" && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-forest-900">All Businesses ({businesses.length})</h2>
+        {tab === "businesses" && (() => {
+          const pending = businesses.filter(b => b.status === "pending");
+          const rest = businesses.filter(b => b.status !== "pending");
+
+          const statusColors: Record<string, string> = {
+            approved: "bg-green-100 text-green-700",
+            pending: "bg-amber-100 text-amber-700",
+            rejected: "bg-red-100 text-red-700",
+            suspended: "bg-slate-100 text-slate-600",
+          };
+          const tierColors: Record<string, string> = {
+            premium: "bg-gold-100 text-gold-700",
+            standard: "bg-blue-100 text-blue-700",
+            basic: "bg-slate-100 text-slate-600",
+          };
+
+          return (
+            <div className="space-y-8">
+              {/* Pending Approval */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Clock size={16} className="text-amber-500" />
+                  <h2 className="text-lg font-bold text-forest-900">Pending Approval ({pending.length})</h2>
+                </div>
+                {pending.length === 0 ? (
+                  <div className="bg-amber-50 rounded-xl p-6 text-center border border-amber-100">
+                    <p className="text-sm text-amber-700 font-medium">No businesses awaiting approval.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {pending.map(biz => (
+                      <div key={biz.id} className="bg-white rounded-xl p-5 shadow-sm border border-amber-200 flex items-center gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-slate-900 text-sm truncate">{biz.name}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{biz.category_slug} · {biz.state}</p>
+                          <span className={`inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-lg ${tierColors[biz.tier] || "bg-slate-100 text-slate-600"}`}>
+                            {biz.tier}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => updateStatus(biz.id, "approved")}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-semibold transition-colors"
+                          >
+                            <ThumbsUp size={13} />
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => updateStatus(biz.id, "rejected")}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold transition-colors"
+                          >
+                            <ThumbsDown size={13} />
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* All other businesses */}
+              <div>
+                <h2 className="text-lg font-bold text-forest-900 mb-4">All Businesses ({businesses.length})</h2>
+                {businesses.length === 0 ? (
+                  <div className="bg-white rounded-xl p-8 text-center border border-slate-100 shadow-sm">
+                    <p className="text-slate-500 text-sm">No businesses in the database yet.</p>
+                    <p className="text-slate-400 text-xs mt-1">Use the seed endpoint or wait for businesses to register.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {rest.map(biz => (
+                      <div key={biz.id} className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-slate-900 text-sm truncate">{biz.name}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">{biz.category_slug} · {biz.state}</p>
+                          {biz.rating > 0 && (
+                            <p className="text-xs text-slate-400">★ {biz.rating} ({biz.review_count} reviews)</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                          <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${statusColors[biz.status] || "bg-slate-100 text-slate-600"}`}>
+                            {biz.status}
+                          </span>
+                          <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${tierColors[biz.tier] || "bg-slate-100 text-slate-600"}`}>
+                            {biz.tier}
+                          </span>
+                          {biz.is_featured && (
+                            <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-gold-50 text-gold-700">★ featured</span>
+                          )}
+                          <button
+                            onClick={() => updateStatus(biz.id, biz.status === "approved" ? "suspended" : "approved")}
+                            className="text-xs font-semibold px-2 py-1 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
+                          >
+                            {biz.status === "approved" ? "Suspend" : "Re-approve"}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-            {businesses.length === 0 ? (
-              <div className="bg-white rounded-xl p-8 text-center border border-slate-100 shadow-sm">
-                <p className="text-slate-500 text-sm">No businesses in the database yet.</p>
-                <p className="text-slate-400 text-xs mt-1">Use the seed endpoint or wait for businesses to register.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {businesses.map(biz => {
-                  const statusColors: Record<string, string> = {
-                    approved: "bg-green-100 text-green-700",
-                    pending: "bg-amber-100 text-amber-700",
-                    rejected: "bg-red-100 text-red-700",
-                    suspended: "bg-slate-100 text-slate-600",
-                  };
-                  const tierColors: Record<string, string> = {
-                    premium: "bg-gold-100 text-gold-700",
-                    standard: "bg-blue-100 text-blue-700",
-                    basic: "bg-slate-100 text-slate-600",
-                  };
-                  return (
-                    <div key={biz.id} className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-slate-900 text-sm truncate">{biz.name}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{biz.category_slug} · {biz.state}</p>
-                        {biz.rating > 0 && (
-                          <p className="text-xs text-slate-400">★ {biz.rating} ({biz.review_count} reviews)</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                        <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${statusColors[biz.status] || "bg-slate-100 text-slate-600"}`}>
-                          {biz.status}
-                        </span>
-                        <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${tierColors[biz.tier] || "bg-slate-100 text-slate-600"}`}>
-                          {biz.tier}
-                        </span>
-                        {biz.is_featured && (
-                          <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-gold-50 text-gold-700">★ featured</span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );

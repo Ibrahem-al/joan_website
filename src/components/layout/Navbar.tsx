@@ -24,12 +24,17 @@ export default function Navbar() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+    supabase.auth.getUser().then(({ data: { user: authUser } }) => {
       setUser(authUser);
       setLoading(false);
-    };
-    checkAuth();
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, [supabase]);
 
   useEffect(() => {
@@ -115,7 +120,7 @@ export default function Navbar() {
                 <button
                   onClick={async () => {
                     await supabase.auth.signOut();
-                    router.push("/");
+                    router.push("/auth");
                   }}
                   className={`text-sm font-medium px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${
                     transparent
@@ -191,7 +196,7 @@ export default function Navbar() {
                   <button
                     onClick={async () => {
                       await supabase.auth.signOut();
-                      router.push("/");
+                      router.push("/auth");
                       setOpen(false);
                     }}
                     className="block px-4 py-3 text-sm font-medium text-forest-800 hover:bg-forest-50 rounded-lg flex items-center gap-2"
