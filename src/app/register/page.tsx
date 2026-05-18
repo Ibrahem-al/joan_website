@@ -23,10 +23,10 @@ interface FormData {
 }
 
 function ImageUploadBox({
-  label, hint, file, preview, onSelect, onClear, uploading,
+  label, hint, preview, onSelect, onClear, uploading,
 }: {
   label: string; hint: string;
-  file: File | null; preview: string | null;
+  preview: string | null;
   onSelect: (f: File) => void; onClear: () => void;
   uploading: boolean;
 }) {
@@ -380,7 +380,6 @@ export default function RegisterPage() {
                 <ImageUploadBox
                   label="Business Logo / Cover Photo"
                   hint="Click to upload your logo or main photo"
-                  file={logoFile}
                   preview={logoPreview}
                   onSelect={handleLogoSelect}
                   onClear={handleLogoClear}
