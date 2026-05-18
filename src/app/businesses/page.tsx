@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Search, Star, MapPin, Mail, ChevronDown } from "lucide-react";
 import { CATEGORIES, STATES } from "@/lib/mockData";
 import { createClient } from "@/lib/supabase";
@@ -32,11 +33,12 @@ const PER_PAGE = 9;
 
 export default function BusinessesPage() {
   const supabase = createClient();
+  const searchParams = useSearchParams();
   const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("");
-  const [state, setState] = useState("");
+  const [category, setCategory] = useState(searchParams.get("category") ?? "");
+  const [state, setState] = useState(searchParams.get("state") ?? "");
   const [page, setPage] = useState(1);
 
   useEffect(() => {
