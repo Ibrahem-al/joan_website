@@ -180,7 +180,7 @@ export default function AdminPage() {
   const updateStatus = async (businessId: string, status: string) => {
     try {
       await adminPost("/api/admin/businesses/update-status", { businessId, status });
-      setBusinesses(prev => prev.map(b => b.id === businessId ? { ...b, status } : b));
+      await fetchBusinesses(); // re-fetch so UI reflects actual DB state
       flash(`Status set to ${status}`);
     } catch (e) { flash((e as Error).message, true); }
   };
@@ -203,8 +203,8 @@ export default function AdminPage() {
           logo_url: (editingBusiness as Business & { logo_url?: string }).logo_url || null,
         },
       });
-      setBusinesses(prev => prev.map(b => b.id === editingBusiness.id ? { ...b, ...editingBusiness } : b));
       setEditingBusiness(null);
+      await fetchBusinesses();
       flash("Business updated");
     } catch (e) { flash((e as Error).message, true); }
   };
@@ -212,8 +212,8 @@ export default function AdminPage() {
   const deleteBusiness = async (businessId: string) => {
     try {
       await adminPost("/api/admin/businesses/delete", { businessId });
-      setBusinesses(prev => prev.filter(b => b.id !== businessId));
       setDeletingBusinessId(null);
+      await fetchBusinesses();
       flash("Business deleted");
     } catch (e) { flash((e as Error).message, true); }
   };
@@ -223,7 +223,7 @@ export default function AdminPage() {
     if (!biz) return;
     try {
       await adminPost("/api/admin/businesses/update-featured", { businessId, isFeatured: !biz.is_featured });
-      setBusinesses(prev => prev.map(b => b.id === businessId ? { ...b, is_featured: !b.is_featured } : b));
+      await fetchBusinesses();
       flash("Featured status updated");
     } catch (e) { flash((e as Error).message, true); }
   };
