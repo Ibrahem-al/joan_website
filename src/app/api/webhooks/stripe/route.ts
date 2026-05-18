@@ -2,11 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { stripe } from '@/lib/stripe'
 import type Stripe from 'stripe'
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@lapaisolutions.com'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://joan-website.vercel.app'
+
+function makeTransporter() {
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD,
+    },
+  })
+}
 
 function makeSupabase(request: NextRequest) {
   return createServerClient(
@@ -124,8 +132,9 @@ export async function POST(request: NextRequest) {
               : null
 
             if (downloadUrl) {
-              await resend.emails.send({
-                from: FROM_EMAIL,
+              const transporter = makeTransporter()
+              await transporter.sendMail({
+                from: `"LaPai Management Solutions" <${process.env.GMAIL_USER}>`,
                 to: buyerEmail,
                 subject: `Your download: ${doc.title}`,
                 html: `
