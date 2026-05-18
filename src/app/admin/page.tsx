@@ -156,88 +156,76 @@ export default function AdminPage() {
     return session?.access_token;
   };
 
-  const adminPost = async (path: string, body: object) => {
-    const token = await getSession();
-    const res = await fetch(path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const d = await res.json();
-      throw new Error(d.error || "Request failed");
-    }
-    return res.json();
-  };
-
   const flash = (msg: string, isError = false) => {
     if (isError) { setError(msg); setTimeout(() => setError(null), 3000); }
     else { setSuccess(msg); setTimeout(() => setSuccess(null), 2000); }
   };
 
-  // ── Business handlers ─────────────────────────────────────────────────────
+  // ── Business handlers (use Supabase client directly — admin RLS policies allow full access) ──
 
   const updateStatus = async (businessId: string, status: string) => {
-    try {
-      await adminPost("/api/admin/businesses/update-status", { businessId, status });
-      await fetchBusinesses(); // re-fetch so UI reflects actual DB state
-      flash(`Status set to ${status}`);
-    } catch (e) { flash((e as Error).message, true); }
+    const { error } = await supabase
+      .from("businesses")
+      .update({ status })
+      .eq("id", businessId);
+    if (error) { flash(error.message, true); return; }
+    await fetchBusinesses();
+    flash(`Status set to ${status}`);
   };
 
   const saveBusiness = async () => {
     if (!editingBusiness) return;
-    try {
-      await adminPost("/api/admin/businesses/update", {
-        businessId: editingBusiness.id,
-        fields: {
-          name: editingBusiness.name,
-          category_slug: editingBusiness.category_slug,
-          state: editingBusiness.state,
-          description: editingBusiness.description,
-          email: editingBusiness.email,
-          phone: editingBusiness.phone,
-          website: editingBusiness.website,
-          social: editingBusiness.social,
-          tier: editingBusiness.tier,
-          logo_url: (editingBusiness as Business & { logo_url?: string }).logo_url || null,
-        },
-      });
-      setEditingBusiness(null);
-      await fetchBusinesses();
-      flash("Business updated");
-    } catch (e) { flash((e as Error).message, true); }
+    const { error } = await supabase
+      .from("businesses")
+      .update({
+        name:         editingBusiness.name,
+        category_slug: editingBusiness.category_slug,
+        state:        editingBusiness.state,
+        description:  editingBusiness.description,
+        email:        editingBusiness.email,
+        phone:        editingBusiness.phone,
+        website:      editingBusiness.website,
+        social:       editingBusiness.social,
+        tier:         editingBusiness.tier,
+        logo_url:     (editingBusiness as Business & { logo_url?: string }).logo_url || null,
+      })
+      .eq("id", editingBusiness.id);
+    if (error) { flash(error.message, true); return; }
+    setEditingBusiness(null);
+    await fetchBusinesses();
+    flash("Business updated");
   };
 
   const deleteBusiness = async (businessId: string) => {
-    try {
-      await adminPost("/api/admin/businesses/delete", { businessId });
-      setDeletingBusinessId(null);
-      await fetchBusinesses();
-      flash("Business deleted");
-    } catch (e) { flash((e as Error).message, true); }
+    const { error } = await supabase
+      .from("businesses")
+      .delete()
+      .eq("id", businessId);
+    if (error) { flash(error.message, true); return; }
+    setDeletingBusinessId(null);
+    await fetchBusinesses();
+    flash("Business deleted");
   };
 
   const toggleFeatured = async (businessId: string) => {
     const biz = businesses.find(b => b.id === businessId);
     if (!biz) return;
-    try {
-      await adminPost("/api/admin/businesses/update-featured", { businessId, isFeatured: !biz.is_featured });
-      await fetchBusinesses();
-      flash("Featured status updated");
-    } catch (e) { flash((e as Error).message, true); }
+    const { error } = await supabase
+      .from("businesses")
+      .update({ is_featured: !biz.is_featured })
+      .eq("id", businessId);
+    if (error) { flash(error.message, true); return; }
+    await fetchBusinesses();
+    flash("Featured status updated");
   };
 
   // ── Review handlers ───────────────────────────────────────────────────────
 
   const deleteReview = async (reviewId: string) => {
-    try {
-      await adminPost("/api/admin/reviews/delete", { reviewId });
-      setReviews(prev => prev.filter(r => r.id !== reviewId));
-      // Refresh businesses so ratings update
-      await fetchBusinesses();
-      flash("Review removed");
-    } catch (e) { flash((e as Error).message, true); }
+    const { error } = await supabase.from("reviews").delete().eq("id", reviewId);
+    if (error) { flash(error.message, true); return; }
+    await Promise.all([fetchReviews(), fetchBusinesses()]); // businesses refresh because the DB trigger updates ratings
+    flash("Review removed");
   };
 
   // ── Document handlers ─────────────────────────────────────────────────────
