@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SITE_STATS } from "@/lib/mockData";
 
 function useCountUp(target: number, duration = 2000, startOnView = true) {
   const [count, setCount] = useState(0);
@@ -43,36 +42,50 @@ function useCountUp(target: number, duration = 2000, startOnView = true) {
   return { count, ref };
 }
 
-const STATS = [
-  { key: "visitors", label: "Site Visitors", value: SITE_STATS.visitors, suffix: "+" },
-  { key: "businesses", label: "Businesses Listed", value: SITE_STATS.businesses, suffix: "+" },
-  { key: "states", label: "States Active", value: SITE_STATS.states, suffix: "" },
-  { key: "clients", label: "Clients Served", value: SITE_STATS.clients, suffix: "+" },
+interface LiveStats { visitors: number; businesses: number; states: number; }
+
+const STAT_CONFIG = [
+  { key: "visitors",   label: "Site Visitors",     suffix: "+" },
+  { key: "businesses", label: "Businesses Listed",  suffix: "+" },
+  { key: "states",     label: "States Active",      suffix: "" },
 ];
 
-function StatItem({ stat }: { stat: typeof STATS[0] }) {
-  const { count, ref } = useCountUp(stat.value);
+function StatItem({ label, value, suffix }: { label: string; value: number; suffix: string }) {
+  const { count, ref } = useCountUp(value);
   return (
     <div ref={ref} className="text-center px-8 py-8 group">
       <div className="text-4xl lg:text-5xl font-black text-white mb-2 tabular-nums">
-        {count.toLocaleString()}{stat.suffix}
+        {count.toLocaleString()}{suffix}
       </div>
       <div className="text-sm font-medium text-forest-300 tracking-wide uppercase">
-        {stat.label}
+        {label}
       </div>
     </div>
   );
 }
 
 export default function StatsBar() {
+  const [stats, setStats] = useState<LiveStats>({ visitors: 0, businesses: 0, states: 0 });
+
+  useEffect(() => {
+    fetch("/api/stats")
+      .then(r => r.json())
+      .then(setStats)
+      .catch(() => {});
+  }, []);
+
   return (
     <section className="bg-forest-800 relative overflow-hidden">
-      {/* Subtle gold accent */}
       <div className="absolute inset-0 bg-gradient-to-r from-forest-900/50 via-transparent to-forest-900/50 pointer-events-none" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-forest-700 divide-y lg:divide-y-0">
-          {STATS.map((stat) => (
-            <StatItem key={stat.key} stat={stat} />
+        <div className="grid grid-cols-2 lg:grid-cols-3 divide-x divide-forest-700">
+          {STAT_CONFIG.map(({ key, label, suffix }) => (
+            <StatItem
+              key={key}
+              label={label}
+              value={stats[key as keyof LiveStats]}
+              suffix={suffix}
+            />
           ))}
         </div>
       </div>

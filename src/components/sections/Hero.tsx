@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Search, ArrowRight } from "lucide-react";
@@ -8,7 +8,15 @@ import { useRouter } from "next/navigation";
 
 export default function Hero() {
   const [query, setQuery] = useState("");
+  const [bizCount, setBizCount] = useState<number | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/stats")
+      .then(r => r.json())
+      .then(d => setBizCount(d.businesses))
+      .catch(() => {});
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,7 +111,7 @@ export default function Hero() {
                   </div>
                 ))}
               </div>
-              <span>87+ vetted businesses listed</span>
+              <span>{bizCount !== null ? `${bizCount}+ vetted businesses listed` : "Vetted businesses listed"}</span>
             </div>
           </div>
         </div>
