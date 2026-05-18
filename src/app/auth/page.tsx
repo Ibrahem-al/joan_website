@@ -6,7 +6,6 @@ import { Eye, EyeOff, ArrowRight, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 
 type Mode = "login" | "signup";
-type Role = "client" | "business";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -17,7 +16,6 @@ export default function AuthPage() {
   }
 
   const [mode, setMode] = useState<Mode>("login");
-  const [role, setRole] = useState<Role>("business");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -169,29 +167,6 @@ export default function AuthPage() {
             <div className="mb-4 flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200">
               <AlertCircle size={18} className="text-red-600 shrink-0" />
               <p className="text-sm text-red-700">{error}</p>
-            </div>
-          )}
-
-          {/* Role selector (signup only) */}
-          {mode === "signup" && (
-            <div className="mb-5">
-              <label className="block text-xs font-semibold text-slate-600 mb-2">I am a...</label>
-              <div className="grid grid-cols-2 gap-2">
-                {(["client", "business"] as Role[]).map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setRole(r)}
-                    className={`py-3 rounded-xl text-sm font-semibold border-2 transition-all capitalize ${
-                      role === r
-                        ? "border-forest-800 bg-forest-50 text-forest-800"
-                        : "border-forest-100 text-slate-500 hover:border-forest-200"
-                    }`}
-                  >
-                    {r === "client" ? "🏠 Client" : "🏢 Business Owner"}
-                  </button>
-                ))}
-              </div>
             </div>
           )}
 
