@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -31,7 +31,7 @@ interface BusinessRow {
 
 const PER_PAGE = 9;
 
-export default function BusinessesPage() {
+function BusinessesContent() {
   const supabase = createClient();
   const searchParams = useSearchParams();
   const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
@@ -251,5 +251,13 @@ export default function BusinessesPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function BusinessesPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-cream pt-20 flex items-center justify-center"><div className="w-10 h-10 border-4 border-forest-200 border-t-forest-800 rounded-full animate-spin" /></div>}>
+      <BusinessesContent />
+    </Suspense>
   );
 }
