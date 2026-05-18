@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
-import { LogOut, Save, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { LogOut, Save, AlertCircle, CheckCircle, Clock, Loader2 } from "lucide-react";
 import { CATEGORIES, STATES } from "@/lib/mockData";
 
 interface Business {
@@ -49,6 +49,7 @@ export default function DashboardPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   const [form, setForm] = useState<Partial<Business>>({
     name: "",
@@ -150,6 +151,24 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/");
+  };
+
+  const handleManageBilling = async () => {
+    setPortalLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/stripe/portal", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else setError(data.error || "Could not open billing portal.");
+    } catch {
+      setError("Could not open billing portal.");
+    } finally {
+      setPortalLoading(false);
+    }
   };
 
   if (loading) {
@@ -394,16 +413,13 @@ export default function DashboardPage() {
                       </p>
                     </div>
                   )}
-                  {subscription.stripe_customer_id && (
-                    <a
-                      href={`https://billing.stripe.com/p/login/${subscription.stripe_customer_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block w-full mt-4 px-4 py-2.5 rounded-xl border border-forest-200 text-forest-800 text-sm font-semibold text-center hover:bg-forest-50 transition-colors"
-                    >
-                      Manage Billing
-                    </a>
-                  )}
+                  <button
+                    onClick={handleManageBilling}
+                    disabled={portalLoading}
+                    className="flex items-center justify-center gap-2 w-full mt-4 px-4 py-2.5 rounded-xl border border-forest-200 text-forest-800 text-sm font-semibold hover:bg-forest-50 disabled:opacity-60 transition-colors"
+                  >
+                    {portalLoading ? <><Loader2 size={14} className="animate-spin" /> Opening…</> : "Manage Billing"}
+                  </button>
                 </div>
               </div>
             ) : (

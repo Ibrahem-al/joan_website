@@ -182,6 +182,8 @@ export default function RegisterPage() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
+
+      // 1. Create the business record (status: pending)
       const res = await fetch("/api/businesses/create", {
         method: "POST",
         headers: {
@@ -205,6 +207,24 @@ export default function RegisterPage() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Submission failed");
+
+      // 2. For paid tiers, redirect to Stripe Checkout for subscription
+      if (form.tier === "standard" || form.tier === "premium") {
+        const checkoutRes = await fetch("/api/register/checkout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ tier: form.tier, businessId: data.id }),
+        });
+        const checkoutData = await checkoutRes.json();
+        if (!checkoutRes.ok) throw new Error(checkoutData.error || "Checkout failed");
+        window.location.href = checkoutData.url;
+        return;
+      }
+
+      // Basic tier — no payment needed
       setSubmitted(true);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Submission failed");
