@@ -8,7 +8,9 @@ import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
 const NAV_LINKS = [
+  { href: "/", label: "Home", exact: true },
   { href: "/businesses", label: "Businesses" },
+  { href: "/book", label: "Consultation" },
   { href: "/store", label: "Documents" },
   { href: "/advertise", label: "List Your Business" },
 ];
@@ -81,7 +83,7 @@ export default function Navbar() {
           {/* Desktop nav */}
           <nav className="hidden lg:flex items-center gap-1">
             {NAV_LINKS.map((link) => {
-              const active = pathname.startsWith(link.href);
+              const active = link.exact ? pathname === link.href : pathname.startsWith(link.href);
               return (
                 <Link
                   key={link.href}
@@ -175,7 +177,7 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                  pathname.startsWith(link.href)
+                  (link.exact ? pathname === link.href : pathname.startsWith(link.href))
                     ? "text-forest-800 bg-forest-50"
                     : "text-slate-700 hover:bg-forest-50 hover:text-forest-800"
                 }`}

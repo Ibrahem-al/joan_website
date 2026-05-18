@@ -1,12 +1,11 @@
 import Link from "next/link";
-import { Mail, Phone } from "lucide-react";
+import { Mail } from "lucide-react";
 
 const FOOTER_LINKS = {
   Directory: [
-    { href: "/directory", label: "All Businesses" },
-    { href: "/categories", label: "Categories" },
-    { href: "/directory?filter=premium", label: "Premium Listings" },
-    { href: "/directory?filter=new", label: "New Listings" },
+    { href: "/businesses", label: "All Businesses" },
+    { href: "/businesses?filter=premium", label: "Premium Listings" },
+    { href: "/businesses?filter=new", label: "New Listings" },
   ],
   Services: [
     { href: "/apply", label: "Get Connected" },
@@ -17,7 +16,7 @@ const FOOTER_LINKS = {
   Company: [
     { href: "/register", label: "Register Your Business" },
     { href: "/advertise", label: "Pricing & Tiers" },
-    { href: "/auth", label: "Client Login" },
+    { href: "/auth", label: "Sign In" },
     { href: "/admin", label: "Admin Access" },
   ],
 };
@@ -48,13 +47,6 @@ export default function Footer() {
               >
                 <Mail size={14} />
                 Lapaisolutions@gmail.com
-              </a>
-              <a
-                href="tel:5558675309"
-                className="flex items-center gap-2 text-sm text-forest-300 hover:text-gold-400 transition-colors"
-              >
-                <Phone size={14} />
-                (555) 867-5309
               </a>
             </div>
             {/* Social */}
