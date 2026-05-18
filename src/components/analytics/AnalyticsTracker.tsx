@@ -4,12 +4,11 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 
-function getSessionId(): string {
-  const key = "lapai_session_id";
-  let id = sessionStorage.getItem(key);
+function getId(storage: Storage, key: string): string {
+  let id = storage.getItem(key);
   if (!id) {
     id = crypto.randomUUID();
-    sessionStorage.setItem(key, id);
+    storage.setItem(key, id);
   }
   return id;
 }
@@ -20,22 +19,21 @@ export default function AnalyticsTracker() {
   const lastPath = useRef<string | null>(null);
 
   useEffect(() => {
-    // Don't double-track the same path (React strict mode / remounts)
     if (pathname === lastPath.current) return;
     lastPath.current = pathname;
 
-    // Skip admin pages — internal traffic shouldn't skew stats
     if (pathname.startsWith("/admin")) return;
 
-    const sessionId = getSessionId();
+    const visitorId = getId(localStorage, "lapai_visitor_id");   // persists across sessions
+    const sessionId = getId(sessionStorage, "lapai_session_id"); // resets when tab closes
 
     supabase.from("analytics_events").insert({
+      visitor_id: visitorId,
       session_id: sessionId,
       event_type: "page_view",
       page: pathname,
       metadata: {
         referrer: typeof document !== "undefined" ? document.referrer || null : null,
-        user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
       },
     }).then(({ error }) => {
       if (error) console.warn("[analytics]", error.message);

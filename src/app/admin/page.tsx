@@ -51,6 +51,7 @@ interface AdminReview {
 
 interface AnalyticsEvent {
   id: number;
+  visitor_id: string | null;
   session_id: string;
   event_type: string;
   page: string;
@@ -157,7 +158,7 @@ export default function AdminPage() {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const { data } = await supabase
       .from("analytics_events")
-      .select("id, session_id, event_type, page, created_at")
+      .select("id, visitor_id, session_id, event_type, page, created_at")
       .gte("created_at", thirtyDaysAgo.toISOString())
       .order("created_at", { ascending: false })
       .limit(2000);
@@ -419,8 +420,9 @@ export default function AdminPage() {
         {/* ── OVERVIEW TAB ─────────────────────────────────────────────────── */}
         {tab === "overview" && (() => {
           // Analytics
-          const pageViews      = analyticsEvents.filter(e => e.event_type === "page_view").length;
-          const uniqueSessions = new Set(analyticsEvents.map(e => e.session_id)).size;
+          const pageViews       = analyticsEvents.filter(e => e.event_type === "page_view").length;
+          const uniqueVisitors  = new Set(analyticsEvents.map(e => e.visitor_id).filter(Boolean)).size;
+          const uniqueSessions  = new Set(analyticsEvents.map(e => e.session_id)).size;
 
           const last14 = Array.from({ length: 14 }, (_, i) => {
             const d = new Date(); d.setDate(d.getDate() - (13 - i));
@@ -502,8 +504,8 @@ export default function AdminPage() {
                   <h3 className="font-bold text-sm text-slate-900 mb-4">Site Snapshot</h3>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { label: "Page Views (30d)",  value: pageViews },
-                      { label: "Unique Visitors",   value: uniqueSessions },
+                      { label: "Page Views (30d)",    value: pageViews },
+                      { label: "Unique Visitors (30d)", value: uniqueVisitors, sub: `${uniqueSessions} sessions` },
                       { label: "Total Businesses",  value: businesses.length, sub: `${businesses.filter(b => b.status === "approved").length} approved` },
                       { label: "Pending Approval",  value: businesses.filter(b => b.status === "pending").length },
                       { label: "Total Reviews",     value: reviews.length },
@@ -525,7 +527,7 @@ export default function AdminPage() {
                   <h3 className="font-bold text-sm text-slate-900">Visitors Per Day — Last 14 Days</h3>
                   <div className="flex items-center gap-2 text-xs text-slate-400">
                     <Eye size={12} />
-                    {pageViews} page views · {uniqueSessions} unique visitors (30d)
+                    {pageViews} views · {uniqueVisitors} unique visitors · {uniqueSessions} sessions (30d)
                   </div>
                 </div>
                 {analyticsEvents.length === 0 ? (
