@@ -276,14 +276,20 @@ export default function AdminPage() {
   const handleEditDocument = async () => {
     if (!editingDoc) return;
     try {
-      await adminPost("/api/admin/documents/update", {
-        documentId: editingDoc.id,
-        title: editingDoc.title,
-        description: editingDoc.description,
-        category: editingDoc.category,
-        price: editingDoc.price,
-        preview_pages: editingDoc.preview_pages,
+      const token = await getSession();
+      const res = await fetch("/api/admin/documents/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          documentId: editingDoc.id,
+          title: editingDoc.title,
+          description: editingDoc.description,
+          category: editingDoc.category,
+          price: editingDoc.price,
+          preview_pages: editingDoc.preview_pages,
+        }),
       });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Failed"); }
       flash("Document updated");
       setEditingDoc(null);
       await fetchDocuments();
@@ -292,7 +298,13 @@ export default function AdminPage() {
 
   const unpublishDocument = async (docId: string) => {
     try {
-      await adminPost("/api/admin/documents/unpublish", { documentId: docId });
+      const token = await getSession();
+      const res = await fetch("/api/admin/documents/unpublish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ documentId: docId }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Failed"); }
       setDocuments(prev => prev.filter(d => d.id !== docId));
       flash("Document removed");
     } catch (e) { flash((e as Error).message, true); }
