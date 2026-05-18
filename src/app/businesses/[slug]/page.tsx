@@ -126,7 +126,7 @@ export default function BusinessProfilePage({ params }: Props) {
   const gallery = business.images ?? [];
 
   return (
-    <div className="min-h-screen bg-cream pt-20">}
+    <div className="min-h-screen bg-cream pt-20">
 
       <div className="relative h-72 sm:h-96 bg-forest-900">
         {business.logo_url ? (
