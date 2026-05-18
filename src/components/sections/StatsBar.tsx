@@ -65,7 +65,7 @@ function StatItem({ label, value, suffix }: { label: string; value: number; suff
 }
 
 export default function StatsBar() {
-  const [stats, setStats] = useState<LiveStats>({ visitors: 0, businesses: 0, states: 0 });
+  const [stats, setStats] = useState<LiveStats>({ visitors: 0, businesses: 0 });
 
   useEffect(() => {
     fetch("/api/stats")
