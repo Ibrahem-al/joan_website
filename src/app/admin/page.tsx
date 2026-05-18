@@ -7,7 +7,7 @@ import { CATEGORIES, STATES } from "@/lib/mockData";
 import {
   X, Edit2, Trash2, Plus, BarChart2, Users, FileText, Building2, Upload,
   AlertCircle, CheckCircle, LogOut, Eye, ShoppingCart, ThumbsUp, ThumbsDown,
-  Clock, Star, MessageSquare, Save,
+  Clock, Star, MessageSquare, Save, DollarSign, TrendingUp,
 } from "lucide-react";
 
 type AdminTab = "overview" | "featured" | "businesses" | "reviews" | "documents";
@@ -57,6 +57,22 @@ interface AnalyticsEvent {
   created_at: string;
 }
 
+interface Subscription {
+  id: string;
+  user_id: string;
+  status: string;
+  tier: string;
+  current_period_end: string | null;
+  created_at: string;
+}
+
+interface Purchase {
+  id: string;
+  document_id: string;
+  amount_paid: number;
+  created_at: string;
+}
+
 interface Document {
   id: string;
   title: string;
@@ -91,10 +107,12 @@ export default function AdminPage() {
   const [error, setError]       = useState<string | null>(null);
   const [success, setSuccess]   = useState<string | null>(null);
 
-  const [businesses, setBusinesses]       = useState<Business[]>([]);
-  const [reviews, setReviews]             = useState<AdminReview[]>([]);
-  const [documents, setDocuments]         = useState<Document[]>([]);
+  const [businesses, setBusinesses]           = useState<Business[]>([]);
+  const [reviews, setReviews]                 = useState<AdminReview[]>([]);
+  const [documents, setDocuments]             = useState<Document[]>([]);
   const [analyticsEvents, setAnalyticsEvents] = useState<AnalyticsEvent[]>([]);
+  const [subscriptions, setSubscriptions]     = useState<Subscription[]>([]);
+  const [purchases, setPurchases]             = useState<Purchase[]>([]);
 
   // Business management state
   const [editingBusiness, setEditingBusiness]     = useState<Business | null>(null);
@@ -116,7 +134,7 @@ export default function AdminPage() {
 
       setAuthed(true);
       setLoading(false);
-      await Promise.all([fetchBusinesses(), fetchDocuments(), fetchAnalytics(), fetchReviews()]);
+      await Promise.all([fetchBusinesses(), fetchDocuments(), fetchAnalytics(), fetchReviews(), fetchSubscriptions(), fetchPurchases()]);
     };
     checkAuth();
   }, [supabase, router]);
@@ -149,6 +167,22 @@ export default function AdminPage() {
   const fetchDocuments = async () => {
     const { data } = await supabase.from("documents").select("*").order("created_at", { ascending: false });
     if (data) setDocuments(data);
+  };
+
+  const fetchSubscriptions = async () => {
+    const { data } = await supabase
+      .from("subscriptions")
+      .select("id, user_id, status, tier, current_period_end, created_at")
+      .order("created_at", { ascending: false });
+    if (data) setSubscriptions(data);
+  };
+
+  const fetchPurchases = async () => {
+    const { data } = await supabase
+      .from("document_purchases")
+      .select("id, document_id, amount_paid, created_at")
+      .order("created_at", { ascending: false });
+    if (data) setPurchases(data);
   };
 
   const getSession = async () => {
@@ -384,10 +418,9 @@ export default function AdminPage() {
 
         {/* ── OVERVIEW TAB ─────────────────────────────────────────────────── */}
         {tab === "overview" && (() => {
+          // Analytics
           const pageViews      = analyticsEvents.filter(e => e.event_type === "page_view").length;
           const uniqueSessions = new Set(analyticsEvents.map(e => e.session_id)).size;
-          const formSubs       = analyticsEvents.filter(e => ["appointment_submit","intake_submit","registration_submit"].includes(e.event_type)).length;
-          const purchases      = analyticsEvents.filter(e => e.event_type === "mock_purchase").length;
 
           const last14 = Array.from({ length: 14 }, (_, i) => {
             const d = new Date(); d.setDate(d.getDate() - (13 - i));
@@ -400,14 +433,30 @@ export default function AdminPage() {
           }));
           const maxSessions = Math.max(...visitsByDay.map(d => d.sessions), 1);
 
+          // Revenue
+          const TIER_PRICES: Record<string, number> = { basic: 0, standard: 29, premium: 79 };
+          const activeSubs  = subscriptions.filter(s => s.status === "active");
+          const payingUsers = activeSubs.filter(s => (TIER_PRICES[s.tier] ?? 0) > 0).length;
+          const mrr         = activeSubs.reduce((sum, s) => sum + (TIER_PRICES[s.tier] ?? 0), 0);
+          const docRevenue  = purchases.reduce((sum, p) => sum + Number(p.amount_paid ?? 0), 0);
+          const totalRevenue = mrr + docRevenue;
+
+          // Subscription breakdown
+          const subsByTier = ["premium", "standard", "basic"].map(tier => ({
+            tier,
+            count: activeSubs.filter(s => s.tier === tier).length,
+            price: TIER_PRICES[tier],
+          }));
+
           return (
             <div className="space-y-6">
+              {/* Revenue cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: "Page Views (30d)",     value: pageViews,      icon: Eye,          color: "text-blue-500" },
-                  { label: "Unique Visitors (30d)", value: uniqueSessions, icon: Users,        color: "text-purple-500" },
-                  { label: "Form Submissions",      value: formSubs,       icon: CheckCircle,  color: "text-green-500" },
-                  { label: "Documents Sold",        value: purchases,      icon: ShoppingCart, color: "text-gold-500" },
+                  { label: "Monthly Recurring Revenue", value: `$${mrr.toLocaleString()}`, icon: TrendingUp, color: "text-green-500", sub: `${activeSubs.length} active subscriptions` },
+                  { label: "Paying Users",               value: payingUsers,                icon: Users,      color: "text-blue-500",  sub: "standard or premium plan" },
+                  { label: "Document Revenue (all-time)", value: `$${docRevenue.toFixed(2)}`, icon: DollarSign, color: "text-gold-500", sub: `${purchases.length} purchases` },
+                  { label: "Total Revenue (MRR + docs)",  value: `$${totalRevenue.toFixed(2)}`, icon: ShoppingCart, color: "text-purple-500", sub: "estimated" },
                 ].map(card => {
                   const Icon = card.icon;
                   return (
@@ -415,35 +464,74 @@ export default function AdminPage() {
                       <Icon size={18} className={`${card.color} mb-3`} />
                       <div className="text-2xl font-black text-slate-900">{card.value}</div>
                       <div className="text-xs text-slate-500 mt-1">{card.label}</div>
+                      <div className="text-xs text-slate-400 mt-0.5">{card.sub}</div>
                     </div>
                   );
                 })}
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              {/* Subscription breakdown + site stats */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Subscription tiers */}
                 <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-                  <div className="text-xs text-slate-500 mb-1">Businesses</div>
-                  <div className="text-3xl font-black text-forest-800">{businesses.length}</div>
-                  <div className="text-xs text-slate-400 mt-1">
-                    {businesses.filter(b => b.status === "approved").length} approved · {businesses.filter(b => b.status === "pending").length} pending
+                  <h3 className="font-bold text-sm text-slate-900 mb-4">Subscription Breakdown</h3>
+                  <div className="space-y-3">
+                    {subsByTier.map(({ tier, count, price }) => (
+                      <div key={tier} className="flex items-center gap-3">
+                        <div className={`text-xs font-bold px-2 py-1 rounded-lg capitalize w-20 text-center ${TIER_COLORS[tier] || "bg-slate-100 text-slate-600"}`}>
+                          {tier}
+                        </div>
+                        <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                          <div
+                            className="h-full bg-forest-600 rounded-full transition-all duration-500"
+                            style={{ width: activeSubs.length > 0 ? `${(count / activeSubs.length) * 100}%` : "0%" }}
+                          />
+                        </div>
+                        <span className="text-sm font-bold text-slate-700 w-6 text-right">{count}</span>
+                        <span className="text-xs text-slate-400 w-16 text-right">{price > 0 ? `$${price}/mo` : "Free"}</span>
+                      </div>
+                    ))}
+                    {activeSubs.length === 0 && (
+                      <p className="text-sm text-slate-400 text-center py-2">No active subscriptions yet</p>
+                    )}
                   </div>
                 </div>
+
+                {/* Site snapshot */}
                 <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-                  <div className="text-xs text-slate-500 mb-1">Reviews</div>
-                  <div className="text-3xl font-black text-forest-800">{reviews.length}</div>
-                  <div className="text-xs text-slate-400 mt-1">across all listings</div>
-                </div>
-                <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-                  <div className="text-xs text-slate-500 mb-1">Documents</div>
-                  <div className="text-3xl font-black text-forest-800">{documents.length}</div>
-                  <div className="text-xs text-slate-400 mt-1">{documents.filter(d => d.is_published).length} published</div>
+                  <h3 className="font-bold text-sm text-slate-900 mb-4">Site Snapshot</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: "Page Views (30d)",  value: pageViews },
+                      { label: "Unique Visitors",   value: uniqueSessions },
+                      { label: "Total Businesses",  value: businesses.length, sub: `${businesses.filter(b => b.status === "approved").length} approved` },
+                      { label: "Pending Approval",  value: businesses.filter(b => b.status === "pending").length },
+                      { label: "Total Reviews",     value: reviews.length },
+                      { label: "Documents",         value: documents.length, sub: `${documents.filter(d => d.is_published).length} published` },
+                    ].map(stat => (
+                      <div key={stat.label} className="bg-slate-50 rounded-lg p-3">
+                        <div className="text-lg font-black text-forest-800">{stat.value}</div>
+                        <div className="text-xs text-slate-500">{stat.label}</div>
+                        {stat.sub && <div className="text-xs text-slate-400">{stat.sub}</div>}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
+              {/* Visitors per day chart */}
               <div className="bg-white rounded-xl p-6 border border-slate-100 shadow-sm">
-                <h3 className="font-bold text-sm text-slate-900 mb-5">Visitors Per Day — Last 14 Days</h3>
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="font-bold text-sm text-slate-900">Visitors Per Day — Last 14 Days</h3>
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <Eye size={12} />
+                    {pageViews} page views · {uniqueSessions} unique visitors (30d)
+                  </div>
+                </div>
                 {analyticsEvents.length === 0 ? (
-                  <p className="text-sm text-slate-400 text-center py-8">No analytics events yet.</p>
+                  <p className="text-sm text-slate-400 text-center py-8">
+                    No analytics data yet — visitors will appear here once they browse the site.
+                  </p>
                 ) : (
                   <div className="flex items-end gap-1.5 h-40">
                     {visitsByDay.map(({ day, label, sessions }) => (
@@ -457,6 +545,21 @@ export default function AdminPage() {
                   </div>
                 )}
               </div>
+
+              {/* Recent page views */}
+              {analyticsEvents.length > 0 && (
+                <div className="bg-white rounded-xl p-6 border border-slate-100 shadow-sm">
+                  <h3 className="font-bold text-sm text-slate-900 mb-4">Recent Page Views</h3>
+                  <div className="space-y-2">
+                    {analyticsEvents.filter(e => e.event_type === "page_view").slice(0, 10).map(e => (
+                      <div key={e.id} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-50 last:border-0">
+                        <span className="font-mono text-slate-600">{e.page}</span>
+                        <span className="text-slate-400">{new Date(e.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}

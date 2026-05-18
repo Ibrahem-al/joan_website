@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import AnalyticsTracker from "@/components/analytics/AnalyticsTracker";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -34,6 +35,7 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body className="antialiased bg-cream min-h-screen flex flex-col">
         <Navbar />
+        <AnalyticsTracker />
         <main className="flex-1">{children}</main>
         <Footer />
       </body>
