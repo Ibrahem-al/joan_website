@@ -8,8 +8,7 @@ import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
 const NAV_LINKS = [
-  { href: "/directory", label: "Directory" },
-  { href: "/categories", label: "Categories" },
+  { href: "/businesses", label: "Businesses" },
   { href: "/store", label: "Documents" },
   { href: "/advertise", label: "List Your Business" },
 ];
