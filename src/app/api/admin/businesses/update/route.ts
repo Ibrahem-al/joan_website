@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
     if (profile?.role !== 'admin') return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
 
-    const allowed = ['name', 'category_slug', 'state', 'description', 'email', 'phone', 'website', 'social', 'tier']
+    const allowed = ['name', 'category_slug', 'state', 'description', 'email', 'phone', 'website', 'social', 'tier', 'logo_url']
     const safe = Object.fromEntries(Object.entries(fields).filter(([k]) => allowed.includes(k)))
 
     const { error } = await supabase.from('businesses').update(safe).eq('id', businessId)

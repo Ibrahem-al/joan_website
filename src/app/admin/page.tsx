@@ -200,6 +200,7 @@ export default function AdminPage() {
           website: editingBusiness.website,
           social: editingBusiness.social,
           tier: editingBusiness.tier,
+          logo_url: (editingBusiness as Business & { logo_url?: string }).logo_url || null,
         },
       });
       setBusinesses(prev => prev.map(b => b.id === editingBusiness.id ? { ...b, ...editingBusiness } : b));
@@ -839,6 +840,14 @@ export default function AdminPage() {
                     onChange={e => setEditingBusiness({ ...editingBusiness, social: e.target.value })}
                     className="w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:outline-none focus:border-forest-400" />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Logo / Cover Image URL</label>
+                <input type="url" placeholder="https://..." value={(editingBusiness as Business & { logo_url?: string }).logo_url || ""}
+                  onChange={e => setEditingBusiness({ ...editingBusiness, logo_url: e.target.value } as Business & { logo_url?: string })}
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm focus:outline-none focus:border-forest-400" />
+                <p className="text-xs text-slate-400 mt-1">Paste a public image URL or leave blank</p>
               </div>
             </div>
 
