@@ -222,6 +222,12 @@ export default function BookPage() {
                 <Calendar size={16} />
                 Confirm Booking
               </button>
+              <p className="text-xs text-slate-400 text-center leading-relaxed">
+                By booking you agree to our{" "}
+                <a href="/terms" className="underline hover:text-slate-600">Terms of Service</a>.
+                {" "}Your information is handled per our{" "}
+                <a href="/privacy" className="underline hover:text-slate-600">Privacy Policy</a>.
+              </p>
             </div>
           </div>
         </form>

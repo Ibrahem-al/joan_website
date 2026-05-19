@@ -235,6 +235,15 @@ export default function AuthPage() {
               </div>
             )}
 
+            {mode === "signup" && (
+              <p className="text-xs text-slate-400 text-center leading-relaxed">
+                By creating an account you agree to our{" "}
+                <a href="/terms" className="underline hover:text-forest-700">Terms of Service</a>
+                {" "}and{" "}
+                <a href="/privacy" className="underline hover:text-forest-700">Privacy Policy</a>.
+              </p>
+            )}
+
             <button
               type="submit"
               disabled={loading}

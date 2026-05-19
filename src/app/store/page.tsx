@@ -138,6 +138,11 @@ function CheckoutModal({ doc, onClose }: { doc: Document; onClose: () => void })
             <ShieldCheck size={12} />
             <span>Secure payment powered by Stripe</span>
           </div>
+          <p className="text-xs text-slate-400 text-center leading-relaxed">
+            By purchasing you agree to our{" "}
+            <a href="/terms" className="underline hover:text-slate-600">Terms of Service</a>.
+            {" "}All sales are final.
+          </p>
         </div>
       </div>
     </div>

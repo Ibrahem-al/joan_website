@@ -506,6 +506,13 @@ export default function RegisterPage() {
                 <div className="bg-gold-50 border border-gold-200 rounded-xl p-4 text-sm text-gold-800">
                   By submitting, your listing will be reviewed by our team within 1–3 business days before going live.
                 </div>
+
+                <p className="text-xs text-slate-400 text-center leading-relaxed">
+                  By submitting you agree to our{" "}
+                  <a href="/terms" className="underline hover:text-forest-700">Terms of Service</a>
+                  {" "}and{" "}
+                  <a href="/privacy" className="underline hover:text-forest-700">Privacy Policy</a>.
+                </p>
               </div>
             )}
 

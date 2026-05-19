@@ -87,9 +87,9 @@ export default function Footer() {
             &copy; {new Date().getFullYear()} LaPai Management Solutions & Consulting LLC. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
-            <a href="#" className="text-xs text-forest-400 hover:text-gold-400 transition-colors">Privacy Policy</a>
-            <a href="#" className="text-xs text-forest-400 hover:text-gold-400 transition-colors">Terms of Service</a>
-            <a href="#" className="text-xs text-forest-400 hover:text-gold-400 transition-colors">Cookie Policy</a>
+            <Link href="/privacy" className="text-xs text-forest-400 hover:text-gold-400 transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="text-xs text-forest-400 hover:text-gold-400 transition-colors">Terms of Service</Link>
+            <Link href="/cookies" className="text-xs text-forest-400 hover:text-gold-400 transition-colors">Cookie Policy</Link>
           </div>
         </div>
       </div>
